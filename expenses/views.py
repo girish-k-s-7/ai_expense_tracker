@@ -61,6 +61,8 @@ def signup_view(request):
 def dashboard_view(request):
     return render(request, "expenses/dashboard.html")
 
+
+
 class ExpenseViewSet(viewsets.ModelViewSet):
 
     serializer_class = ExpenseSerializer
@@ -68,9 +70,38 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Expense.objects.filter(
+        queryset = Expense.objects.filter(
             user=self.request.user
         ).select_related("category")
+
+        params = self.request.query_params
+
+        category = params.get("category")
+        start_date = params.get("start_date")
+        end_date = params.get("end_date")
+        min_amount = params.get("min_amount")
+        max_amount = params.get("max_amount")
+        search = params.get("search")
+
+        if category:
+            queryset = queryset.filter(category_id=category)
+
+        if start_date:
+            queryset = queryset.filter(date__gte=start_date)
+
+        if end_date:
+            queryset = queryset.filter(date__lte=end_date)
+
+        if min_amount:
+            queryset = queryset.filter(amount__gte=min_amount)
+
+        if max_amount:
+            queryset = queryset.filter(amount__lte=max_amount)
+
+        if search:
+            queryset = queryset.filter(note__icontains=search)
+
+        return queryset.order_by("-date")
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
