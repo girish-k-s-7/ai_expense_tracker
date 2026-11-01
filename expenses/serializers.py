@@ -1,8 +1,7 @@
 
 from rest_framework import serializers
 
-from .models import Expense
-
+from .models import Expense, Category
 
 class ExpenseSerializer(serializers.ModelSerializer):
 
@@ -31,3 +30,17 @@ class ExpenseSerializer(serializers.ModelSerializer):
             )
 
         return category
+
+
+class CategorySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Category
+
+        fields = [
+            "id",
+            "name",
+            "is_default",
+        ]
+
+        read_only_fields = ["id", "is_default"]
