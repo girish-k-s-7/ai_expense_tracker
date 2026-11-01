@@ -43,4 +43,6 @@ urlpatterns = [
         auth_views.LogoutView.as_view(),
         name="logout",
     ),
+
+    path("api/", include("expenses.api_urls")),
 ]
