@@ -2,6 +2,9 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Sum
+from django.db.models.functions import TruncMonth
+from django.utils import timezone
 
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -59,9 +62,122 @@ def signup_view(request):
     return render(request, "expenses/signup.html", {"form": form})
 
 
+
 @login_required
 def dashboard_view(request):
-    return render(request, "expenses/dashboard.html")
+
+    user = request.user
+    today = timezone.localdate()
+
+    # Total expenses
+    total_expenses = Expense.objects.filter(
+        user=user
+    ).aggregate(
+        total=Sum("amount")
+    )["total"] or 0
+
+    # Current month's expenses
+    monthly_expenses = Expense.objects.filter(
+        user=user,
+        date__year=today.year,
+        date__month=today.month
+    ).aggregate(
+        total=Sum("amount")
+    )["total"] or 0
+
+    # Current month's budgets
+    monthly_budgets = Budget.objects.filter(
+        user=user,
+        month__year=today.year,
+        month__month=today.month
+    )
+
+    total_budget = monthly_budgets.aggregate(
+        total=Sum("amount")
+    )["total"] or 0
+
+    remaining_budget = max(
+        total_budget - monthly_expenses,
+        0
+    )
+
+    # Category-wise spending
+    category_expenses = Expense.objects.filter(
+        user=user,
+        date__year=today.year,
+        date__month=today.month
+    ).values(
+        "category__name"
+    ).annotate(
+        total=Sum("amount")
+    ).order_by("-total")
+
+    # Monthly spending trend
+    monthly_trend = Expense.objects.filter(
+        user=user
+    ).annotate(
+        month=TruncMonth("date")
+    ).values(
+        "month"
+    ).annotate(
+        total=Sum("amount")
+    ).order_by("month")
+
+    # Budget progress by category
+    budget_progress = []
+
+    for budget in monthly_budgets:
+
+        spent = Expense.objects.filter(
+            user=user,
+            category=budget.category,
+            date__year=today.year,
+            date__month=today.month
+        ).aggregate(
+            total=Sum("amount")
+        )["total"] or 0
+
+        percentage = 0
+
+        if budget.amount > 0:
+            percentage = round(
+                (spent / budget.amount) * 100,
+                2
+            )
+
+        budget_progress.append({
+            "category": budget.category.name,
+            "amount": budget.amount,
+            "spent": spent,
+            "remaining": max(budget.amount - spent, 0),
+            "percentage": percentage,
+        })
+
+    # Recent expenses
+    recent_expenses = Expense.objects.filter(
+        user=user
+    ).select_related(
+        "category"
+    ).order_by(
+        "-date", "-created_at"
+    )[:5]
+
+    context = {
+        "total_expenses": total_expenses,
+        "monthly_expenses": monthly_expenses,
+        "total_budget": total_budget,
+        "remaining_budget": remaining_budget,
+        "category_expenses": category_expenses,
+        "monthly_trend": monthly_trend,
+        "budget_progress": budget_progress,
+        "recent_expenses": recent_expenses,
+    }
+
+    return render(
+        request,
+        "expenses/dashboard.html",
+        context
+    )
 
 
 class ExpenseViewSet(viewsets.ModelViewSet):
@@ -70,6 +186,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+
         queryset = Expense.objects.filter(
             user=self.request.user
         ).select_related("category")
@@ -124,6 +241,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
         )
 
     def perform_update(self, serializer):
+
         category = self.get_object()
 
         if category.is_default:
@@ -134,6 +252,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
         serializer.save()
 
     def perform_destroy(self, instance):
+
         if instance.is_default:
             raise PermissionDenied(
                 "Default categories cannot be deleted."
