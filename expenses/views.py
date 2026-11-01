@@ -1,19 +1,20 @@
+
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-
-from .models import Expense
-from .serializers import CategorySerializer, ExpenseSerializer
-
 from rest_framework.exceptions import PermissionDenied
 
+from .models import Expense, Category, Budget
+from .serializers import (
+    ExpenseSerializer,
+    CategorySerializer,
+    BudgetSerializer,
+)
 
 from .forms import SignUpForm
-
-from django.db import transaction
-from .models import Category
 
 
 DEFAULT_CATEGORIES = [
@@ -57,16 +58,15 @@ def signup_view(request):
 
     return render(request, "expenses/signup.html", {"form": form})
 
+
 @login_required
 def dashboard_view(request):
     return render(request, "expenses/dashboard.html")
 
 
-
 class ExpenseViewSet(viewsets.ModelViewSet):
 
     serializer_class = ExpenseSerializer
-
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -108,6 +108,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
+
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
 
@@ -139,3 +140,17 @@ class CategoryViewSet(viewsets.ModelViewSet):
             )
 
         instance.delete()
+
+
+class BudgetViewSet(viewsets.ModelViewSet):
+
+    serializer_class = BudgetSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Budget.objects.filter(
+            user=self.request.user
+        ).select_related("category").order_by("-month")
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
