@@ -19,6 +19,17 @@ from .serializers import (
 
 from .forms import SignUpForm
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
+
+from ai_services.llm import (
+    call_llm,
+    build_expense_prompt,
+    parse_expense_response,
+    validate_expense_data,
+)
+
 
 DEFAULT_CATEGORIES = [
     "Food",
@@ -273,3 +284,68 @@ class BudgetViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def generate_expense_draft(request):
+
+    user_input = request.data.get("description", "").strip()
+
+    if not user_input:
+        return Response(
+            {"error": "Please enter an expense description."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if len(user_input) > 1000:
+        return Response(
+            {"error": "Description cannot exceed 1000 characters."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    categories = list(
+        Category.objects.filter(
+            user=request.user
+        ).values_list("name", flat=True)
+    )
+
+    today = timezone.localdate().isoformat()
+
+    try:
+        prompt = build_expense_prompt(
+            user_input=user_input,
+            categories=categories,
+            today=today
+        )
+
+        gemini_response = call_llm(prompt)
+
+        expense_data = parse_expense_response(
+            gemini_response
+        )
+
+        validated_data = validate_expense_data(
+            expense_data,
+            categories
+        )
+
+        return Response(
+            {
+                "message": "Expense draft generated successfully.",
+                "expense": {
+                    "amount": str(validated_data["amount"]),
+                    "category": validated_data["category"],
+                    "date": validated_data["date"].isoformat(),
+                    "payment_method": validated_data["payment_method"],
+                    "note": validated_data["note"],
+                }
+            },
+            status=status.HTTP_200_OK
+        )
+
+    except (ValueError, RuntimeError) as error:
+        return Response(
+            {"error": str(error)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
