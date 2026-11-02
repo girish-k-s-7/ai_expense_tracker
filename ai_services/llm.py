@@ -64,9 +64,9 @@ def build_expense_prompt(user_input: str, categories: list, today: str) -> str:
     2. Select the most suitable category from the available categories.
     3. Never create a category that is not in the available categories.
     4. Convert relative dates such as today and yesterday into YYYY-MM-DD.
-    5. Extract the payment method if mentioned.
+    5. If the user does not mention a date, return an empty string.
     6. Write a short description in the note field.
-    7. If information is missing, return an empty string for that field.
+    7. If the user does not mention a payment method, return an empty string.
     8. Never invent missing information.
     9. Return valid JSON only. Do not include Markdown or explanations.
 
@@ -145,3 +145,72 @@ def validate_expense_data(expense_data: dict, categories: list) -> dict:
         "payment_method": payment_method,
         "note": note
     }
+
+def build_monthly_insights_prompt(monthly_data: dict) -> str:
+
+    prompt = f"""
+    You are a personal finance assistant.
+
+    Analyse the following monthly financial summary
+    and provide useful financial insights.
+
+    Financial data:
+    {json.dumps(monthly_data, indent=4)}
+
+    
+    Instructions:
+    1. Summarize the user's total monthly spending.
+    2. Identify the highest spending category.
+    3. Explain the budget performance for each budgeted category.
+    4. Clearly identify categories that do not have a budget.
+    5. Compare spending with the previous month.
+    6. Suggest 2 or 3 practical ways to manage expenses.
+    7. Mention important spending patterns.
+    8. Use only the financial data provided.
+    9. Never invent amounts, percentages, categories, or financial facts.
+    10. If previous-month data is unavailable, clearly mention it.
+    11. Keep the language simple, clear, and easy to understand.
+    12. All financial amounts are in Indian Rupees (INR).
+    13. Always use ₹ when displaying currency.
+    14. Never use $, USD, or any other currency symbol.
+    15. Do not describe the sum of category budgets as an overall
+        budget unless all spending categories are budgeted.
+    16. Never claim that total spending is within an overall budget
+        when only some categories have budgets.
+    17. Clearly distinguish between budgeted and unbudgeted
+        categories.
+    18. Do not assume that unspent budget means actual savings.
+    19. Do not make unsupported assumptions about the user's
+        income, savings, or financial goals.
+    20. If there is no spending data, clearly state that.
+    21. Avoid repeating the same information in multiple sections.
+    22. Keep recommendations relevant to the actual spending data.
+    23. Do not give investment, loan, or tax advice.
+
+    Formatting Rules:
+    1. Write the entire report using normal sentences and paragraphs.
+    2. Do not use Markdown formatting.
+    3. Do not use #, *, **, bullet points, or numbered lists.
+    4. Use simple section titles as plain text.
+    5. Separate each section with a blank line.
+    6. Write recommendations as normal sentences.
+    7. Keep the report concise and readable.
+    8. Do not include greetings, introductions, or unnecessary
+       closing statements.
+
+    Use exactly these section titles:
+
+    Monthly Spending Summary
+
+    Category Analysis
+
+    Budget Analysis
+
+    Previous Month Comparison
+
+    Recommendations
+
+    Return the complete report as plain text only.
+    """
+
+    return prompt

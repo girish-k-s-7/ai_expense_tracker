@@ -28,7 +28,12 @@ from ai_services.llm import (
     build_expense_prompt,
     parse_expense_response,
     validate_expense_data,
+    build_monthly_insights_prompt,
 )
+
+from datetime import date
+
+from rest_framework.pagination import PageNumberPagination
 
 
 DEFAULT_CATEGORIES = [
@@ -190,10 +195,30 @@ def dashboard_view(request):
         context
     )
 
+@login_required
+def expenses_page(request):
+    return render(
+        request,
+        "expenses/expenses.html"
+    )
+
+@login_required
+def budgets_page(request):
+    return render(
+        request,
+        "expenses/budgets.html"
+    )
+
+
+class ExpensePagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
 class ExpenseViewSet(viewsets.ModelViewSet):
 
     serializer_class = ExpenseSerializer
+    permission_classes = [IsAuthenticated]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -324,6 +349,11 @@ def generate_expense_draft(request):
         expense_data = parse_expense_response(
             gemini_response
         )
+        if not expense_data.get("date"):
+            expense_data["date"] = today
+
+        if not expense_data.get("payment_method"):
+            expense_data["payment_method"] = "Null"
 
         validated_data = validate_expense_data(
             expense_data,
@@ -348,4 +378,116 @@ def generate_expense_draft(request):
         return Response(
             {"error": str(error)},
             status=status.HTTP_400_BAD_REQUEST
+        )
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def generate_monthly_insights(request):
+
+    today = timezone.localdate()
+
+    current_month = today.replace(day=1)
+
+    if current_month.month == 1:
+        previous_month = current_month.replace(
+            year=current_month.year - 1,
+            month=12
+        )
+    else:
+        previous_month = current_month.replace(
+            month=current_month.month - 1
+        )
+
+    # Current month expenses
+    current_expenses = Expense.objects.filter(
+        user=request.user,
+        date__year=current_month.year,
+        date__month=current_month.month
+    )
+
+    current_total = current_expenses.aggregate(
+        total=Sum("amount")
+    )["total"] or 0
+
+    # Previous month expenses
+    previous_expenses = Expense.objects.filter(
+        user=request.user,
+        date__year=previous_month.year,
+        date__month=previous_month.month
+    )
+
+    previous_total = previous_expenses.aggregate(
+        total=Sum("amount")
+    )["total"] or 0
+
+    # Category-wise spending
+    category_spending = current_expenses.values(
+        "category__name"
+    ).annotate(
+        total=Sum("amount")
+    ).order_by("-total")
+
+    category_data = [
+        {
+            "category": item["category__name"],
+            "amount": str(item["total"])
+        }
+        for item in category_spending
+    ]
+
+    # Current month budget
+    budgets = Budget.objects.filter(
+        user=request.user,
+        month=current_month
+    ).select_related("category")
+
+    total_budget = sum(
+        (budget.amount for budget in budgets),
+        start=0
+    )
+
+    budget_data = []
+
+    for budget in budgets:
+
+        spent = current_expenses.filter(
+            category=budget.category
+        ).aggregate(
+            total=Sum("amount")
+        )["total"] or 0
+
+        budget_data.append({
+            "category": budget.category.name,
+            "budget": str(budget.amount),
+            "spent": str(spent),
+            "remaining": str(max(budget.amount - spent, 0))
+        })
+
+    monthly_data = {
+        "month": current_month.strftime("%B %Y"),
+        "total_spending": str(current_total),
+        "total_budget": str(total_budget),
+        "previous_month": previous_month.strftime("%B %Y"),
+        "previous_month_spending": str(previous_total),
+        "category_spending": category_data,
+        "budget_performance": budget_data
+    }
+
+    try:
+        prompt = build_monthly_insights_prompt(monthly_data)
+
+        insights = call_llm(prompt)
+
+        return Response(
+            {
+                "message": "Monthly insights generated successfully.",
+                "insights": insights
+            },
+            status=status.HTTP_200_OK
+        )
+
+    except (ValueError, RuntimeError) as error:
+        return Response(
+            {"error": str(error)},
+            status=status.HTTP_502_BAD_GATEWAY
         )

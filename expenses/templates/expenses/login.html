@@ -1,27 +1,395 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | AI Expense Tracker</title>
-</head>
-<body>
+{% extends "expenses/base.html" %}
 
-    <h1>Welcome Back!</h1>
+{% block title %}Sign In | AI Expense Tracker{% endblock %}
 
-    <form method="POST">
-        {% csrf_token %}
+{% block extra_head %}
+<style>
+    .auth-page {
+        min-height: 78vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 45px 20px;
+        background: #f1f5f9;
+    }
 
-        {{ form.as_p }}
+    .auth-layout {
+        width: 100%;
+        max-width: 1050px;
+        min-height: 570px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        background: white;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, .10);
+    }
 
-        <button type="submit">Login</button>
-    </form>
+    .auth-brand {
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 48px;
+        background: linear-gradient(145deg, #172554, #1d4ed8 75%, #2563eb);
+        color: white;
+    }
 
-    <p>
-        Don't have an account?
-        <a href="{% url 'signup' %}">Create an account</a>
-    </p>
+    .brand-logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 18px;
+        font-weight: 750;
+        letter-spacing: -.4px;
+    }
 
-</body>
-</html>
+    .brand-logo-icon {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        background: rgba(255,255,255,.16);
+        font-size: 23px;
+    }
+
+    .brand-content {
+        position: relative;
+        z-index: 1;
+        margin: 45px 0;
+    }
+
+    .brand-tag {
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 30px;
+        background: rgba(255,255,255,.14);
+        font-size: 12px;
+        font-weight: 650;
+        letter-spacing: .5px;
+        margin-bottom: 22px;
+    }
+
+    .brand-content h1 {
+        font-size: clamp(30px, 3.5vw, 43px);
+        line-height: 1.15;
+        letter-spacing: -1.5px;
+        margin-bottom: 18px;
+        color: white;
+    }
+
+    .brand-content p {
+        color: #dbeafe;
+        font-size: 15px;
+        line-height: 1.8;
+        max-width: 370px;
+    }
+
+    .brand-features {
+        display: grid;
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    .brand-feature {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 14px;
+        color: #eff6ff;
+    }
+
+    .feature-check {
+        width: 25px;
+        height: 25px;
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: rgba(255,255,255,.16);
+    }
+
+    .brand-bottom {
+        position: relative;
+        z-index: 1;
+        color: #bfdbfe;
+        font-size: 12px;
+    }
+
+    .brand-decoration {
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 50%;
+        right: -130px;
+        top: 80px;
+        box-shadow: 0 0 0 35px rgba(255,255,255,.035),
+                    0 0 0 75px rgba(255,255,255,.025);
+    }
+
+    .auth-form-panel {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 55px 55px;
+    }
+
+    .form-heading {
+        margin-bottom: 32px;
+    }
+
+    .form-heading .eyebrow {
+        color: #2563eb;
+        font-size: 12px;
+        font-weight: 750;
+        letter-spacing: 1.3px;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+    }
+
+    .form-heading h2 {
+        font-size: 30px;
+        letter-spacing: -1px;
+        color: #0f172a;
+        margin-bottom: 10px;
+    }
+
+    .form-heading p {
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .auth-form p {
+        margin-bottom: 21px;
+    }
+
+    .auth-form label {
+        display: block;
+        color: #334155;
+        font-size: 13px;
+        font-weight: 650;
+        margin-bottom: 9px;
+    }
+
+    .auth-form input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 14px 15px;
+        border: 1px solid #dbe2ea;
+        border-radius: 9px;
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 14px;
+        outline: none;
+        transition: .2s;
+    }
+
+    .auth-form input:focus {
+        background: white;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37,99,235,.10);
+    }
+
+    .auth-form .helptext {
+        display: block;
+        color: #94a3b8;
+        font-size: 11px;
+        line-height: 1.5;
+        margin-top: 7px;
+    }
+
+    .auth-form ul {
+        color: #dc2626;
+        font-size: 12px;
+        padding-left: 19px;
+        margin-top: 8px;
+        line-height: 1.6;
+    }
+
+    .auth-form .errorlist {
+        color: #dc2626;
+        font-size: 12px;
+        padding-left: 18px;
+        margin: 5px 0;
+    }
+
+    .auth-error {
+        padding: 13px 15px;
+        border-radius: 9px;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #b91c1c;
+        font-size: 13px;
+        margin-bottom: 22px;
+    }
+
+    .auth-button {
+        width: 100%;
+        padding: 15px;
+        border: none;
+        border-radius: 9px;
+        background: #2563eb;
+        color: white;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: .2s;
+        box-shadow: 0 5px 12px rgba(37,99,235,.18);
+    }
+
+    .auth-button:hover {
+        background: #1d4ed8;
+        transform: translateY(-1px);
+    }
+
+    .auth-switch {
+        margin-top: 27px;
+        text-align: center;
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .auth-switch a {
+        color: #2563eb;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .auth-switch a:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 750px) {
+        .auth-layout {
+            max-width: 470px;
+            min-height: auto;
+            grid-template-columns: 1fr;
+        }
+
+        .auth-brand {
+            padding: 30px;
+        }
+
+        .brand-content {
+            margin: 35px 0 15px;
+        }
+
+        .brand-content h1 {
+            font-size: 29px;
+        }
+
+        .brand-features {
+            display: none;
+        }
+
+        .brand-bottom {
+            display: none;
+        }
+
+        .auth-form-panel {
+            padding: 35px 30px;
+        }
+
+        .form-heading {
+            margin-bottom: 25px;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .auth-page { padding: 22px 12px; }
+        .auth-brand { padding: 25px; }
+        .auth-form-panel { padding: 30px 23px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-layout">
+
+        <section class="auth-brand">
+            <div class="brand-decoration"></div>
+
+            <div class="brand-logo">
+                <span class="brand-logo-icon">₹</span>
+                <span>AI Expense Tracker</span>
+            </div>
+
+            <div class="brand-content">
+                <span class="brand-tag">SMARTER MONEY MANAGEMENT</span>
+
+                <h1>Take control of your money. One expense at a time.</h1>
+
+                <p>
+                    Track spending, manage monthly budgets and use AI-powered
+                    insights to make better financial decisions.
+                </p>
+
+                <div class="brand-features">
+                    <div class="brand-feature">
+                        <span class="feature-check">✓</span>
+                        Track all your expenses in one place
+                    </div>
+
+                    <div class="brand-feature">
+                        <span class="feature-check">✓</span>
+                        Stay on top of your monthly budgets
+                    </div>
+
+                    <div class="brand-feature">
+                        <span class="feature-check">✓</span>
+                        Get insights powered by AI
+                    </div>
+                </div>
+            </div>
+
+            <div class="brand-bottom">
+                Your finances, organized and understood.
+            </div>
+        </section>
+
+        <section class="auth-form-panel">
+            <div class="form-heading">
+                <p class="eyebrow">WELCOME BACK</p>
+                <h2>Sign in to your account</h2>
+                <p>Enter your credentials to continue to your dashboard.</p>
+            </div>
+
+            {% if form.errors %}
+                <div class="auth-error">
+                    Invalid username or password. Please check your credentials.
+                </div>
+            {% endif %}
+
+            {% if next and user.is_authenticated %}
+                <div class="auth-error">
+                    Your account does not have access to that page.
+                </div>
+            {% endif %}
+
+            <form method="POST" class="auth-form">
+                {% csrf_token %}
+
+                <input type="hidden" name="next" value="{{ next|default:'' }}">
+
+                {{ form.as_p }}
+
+                <button type="submit" class="auth-button">
+                    Sign In to Your Account →
+                </button>
+            </form>
+
+            <div class="auth-switch">
+                New to AI Expense Tracker?
+                <a href="{% url 'signup' %}">Create an account</a>
+            </div>
+        </section>
+
+    </div>
+</div>
+{% endblock %}

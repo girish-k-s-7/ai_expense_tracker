@@ -1,17 +1,11 @@
+{% extends "expenses/base.html" %}
 
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
+{% block title %}AI Expense Tracker | Dashboard{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>AI Expense Tracker | Dashboard</title>
-
+{% block extra_head %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <style>
+
         * {
             margin: 0;
             padding: 0;
@@ -136,7 +130,8 @@
             min-width: 500px;
         }
 
-        th, td {
+        th,
+        td {
             padding: 14px;
             text-align: left;
             border-bottom: 1px solid #e2e8f0;
@@ -217,6 +212,33 @@
             border-top: 1px solid #e2e8f0;
         }
 
+        /* AI Monthly Financial Insights */
+
+        .ai-insights-section {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+        }
+
+        .insights-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .insights-result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f5f7ff;
+            border-radius: 10px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
         .ai-draft-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -271,224 +293,195 @@
                 grid-template-columns: 1fr;
             }
         }
+    
     </style>
-</head>
+{% endblock %}
 
-<body>
+{% block content %}
+    <div class="container">
+<!-- KPI Cards -->
 
-<div class="container">
+        <h2 class="section-title">Financial Overview</h2>
 
-    <!-- Header -->
+        <div class="kpi-grid">
 
-    <header class="header">
+            <div class="card kpi-card">
+                <div class="kpi-icon">💰</div>
+                <p>Total Expenses</p>
+                <h2>₹{{ total_expenses|floatformat:2 }}</h2>
+            </div>
 
-        <div>
-            <h1>AI Expense Tracker</h1>
-            <p>Welcome back, {{ request.user.username }}!</p>
+            <div class="card kpi-card">
+                <div class="kpi-icon">📅</div>
+                <p>This Month's Spending</p>
+                <h2>₹{{ monthly_expenses|floatformat:2 }}</h2>
+            </div>
+
+            <div class="card kpi-card">
+                <div class="kpi-icon">🎯</div>
+                <p>Monthly Budget</p>
+                <h2>₹{{ total_budget|floatformat:2 }}</h2>
+            </div>
+
+            <div class="card kpi-card">
+                <div class="kpi-icon">🏦</div>
+                <p>Remaining Budget</p>
+                <h2>₹{{ remaining_budget|floatformat:2 }}</h2>
+            </div>
+
         </div>
 
-        <form method="POST" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button class="logout-btn" type="submit">
-                Logout
-            </button>
-        </form>
 
-    </header>
+        <!-- AI Expense Assistant -->
 
+        <h2 class="section-title">✨ AI Expense Assistant</h2>
 
-    <!-- KPI Cards -->
+        <div class="ai-card">
 
-    <h2 class="section-title">Financial Overview</h2>
-
-    <div class="kpi-grid">
-
-        <div class="card kpi-card">
-            <div class="kpi-icon">💰</div>
-            <p>Total Expenses</p>
-            <h2>₹{{ total_expenses|floatformat:2 }}</h2>
-        </div>
-
-        <div class="card kpi-card">
-            <div class="kpi-icon">📅</div>
-            <p>This Month's Spending</p>
-            <h2>₹{{ monthly_expenses|floatformat:2 }}</h2>
-        </div>
-
-        <div class="card kpi-card">
-            <div class="kpi-icon">🎯</div>
-            <p>Monthly Budget</p>
-            <h2>₹{{ total_budget|floatformat:2 }}</h2>
-        </div>
-
-        <div class="card kpi-card">
-            <div class="kpi-icon">🏦</div>
-            <p>Remaining Budget</p>
-            <h2>₹{{ remaining_budget|floatformat:2 }}</h2>
-        </div>
-
-    </div>
-
-
-    <!-- AI Expense Assistant -->
-
-    <h2 class="section-title">✨ AI Expense Assistant</h2>
-
-    <div class="ai-card">
-
-        <h3>Describe your expense</h3>
-
-        <p class="empty-message">
-            Tell Gemini what you spent, and it will prepare
-            an expense draft for you.
-        </p>
-
-        <textarea
-            id="expenseDescription"
-            class="ai-description"
-            placeholder="Example: I spent 450 rupees on dinner using UPI yesterday."
-            maxlength="1000"
-        ></textarea>
-
-        <button
-            type="button"
-            id="generateExpenseBtn"
-            class="ai-btn"
-        >
-            Generate Expense
-        </button>
-
-        <p
-            id="aiStatus"
-            class="ai-status"
-            aria-live="polite"
-        ></p>
-
-
-        <!-- Editable Expense Draft -->
-
-        <div id="expenseDraft" class="ai-draft" hidden>
-
-            <h3>Review Your Expense</h3>
+            <h3>Describe your expense</h3>
 
             <p class="empty-message">
-                Check the extracted information and correct
-                anything before saving.
+                Tell Gemini what you spent, and it will prepare
+                an expense draft for you.
             </p>
 
-            <div class="ai-draft-grid">
+            <textarea id="expenseDescription" class="ai-description"
+                placeholder="Example: I spent 450 rupees on dinner using UPI yesterday." maxlength="1000"></textarea>
 
-                <div class="ai-field">
-                    <label for="draftAmount">Amount (₹)</label>
-                    <input
-                        type="number"
-                        id="draftAmount"
-                        min="0.01"
-                        step="0.01"
-                    >
+            <button type="button" id="generateExpenseBtn" class="ai-btn">
+                Generate Expense
+            </button>
+
+            <p id="aiStatus" class="ai-status" aria-live="polite"></p>
+
+
+            <!-- Editable Expense Draft -->
+
+            <div id="expenseDraft" class="ai-draft" hidden>
+
+                <h3>Review Your Expense</h3>
+
+                <p class="empty-message">
+                    Check the extracted information and correct
+                    anything before saving.
+                </p>
+
+                <div class="ai-draft-grid">
+
+                    <div class="ai-field">
+                        <label for="draftAmount">Amount (₹)</label>
+                        <input type="number" id="draftAmount" min="0.01" step="0.01">
+                    </div>
+
+                    <div class="ai-field">
+                        <label for="draftCategory">Category</label>
+                        <select id="draftCategory">
+                            <option value="">Select category</option>
+                        </select>
+                    </div>
+
+                    <div class="ai-field">
+                        <label for="draftDate">Date</label>
+                        <input type="date" id="draftDate">
+                    </div>
+
+                    <div class="ai-field">
+                        <label for="draftPayment">Payment Method</label>
+                        <input type="text" id="draftPayment" maxlength="50" placeholder="Example: UPI">
+                    </div>
+
+                    <div class="ai-field" style="grid-column: 1 / -1;">
+                        <label for="draftNote">Note</label>
+                        <input type="text" id="draftNote" placeholder="Expense description">
+                    </div>
+
                 </div>
 
-                <div class="ai-field">
-                    <label for="draftCategory">Category</label>
-                    <select id="draftCategory">
-                        <option value="">Select category</option>
-                    </select>
-                </div>
-
-                <div class="ai-field">
-                    <label for="draftDate">Date</label>
-                    <input
-                        type="date"
-                        id="draftDate"
-                    >
-                </div>
-
-                <div class="ai-field">
-                    <label for="draftPayment">Payment Method</label>
-                    <input
-                        type="text"
-                        id="draftPayment"
-                        maxlength="50"
-                        placeholder="Example: UPI"
-                    >
-                </div>
-
-                <div
-                    class="ai-field"
-                    style="grid-column: 1 / -1;"
-                >
-                    <label for="draftNote">Note</label>
-                    <input
-                        type="text"
-                        id="draftNote"
-                        placeholder="Expense description"
-                    >
-                </div>
+                <button type="button" id="saveExpenseBtn" class="ai-btn">
+                    Confirm & Save Expense
+                </button>
 
             </div>
-
-            <button
-                type="button"
-                id="saveExpenseBtn"
-                class="ai-btn"
-            >
-                Confirm & Save Expense
-            </button>
 
         </div>
 
-    </div>
+        <!-- AI Monthly Financial Insights -->
 
+        <h2 class="section-title">✨ AI Monthly Financial Insights</h2>
 
-    <!-- Charts -->
+        <div class="ai-insights-section">
 
-    <h2 class="section-title">Spending Analytics</h2>
+            <div class="insights-header">
 
-    <div class="chart-grid">
+                <div>
+                    <h3>Understand Your Spending</h3>
+                    <p class="empty-message">
+                        Get personalized insights about your monthly expenses.
+                    </p>
+                </div>
 
-        <div class="card">
+                <button type="button" id="generateInsightsBtn" class="ai-btn">
+                    Generate AI Insights
+                </button>
 
-            <h3>Category-wise Spending</h3>
-
-            <div class="chart-container">
-                <canvas id="categoryChart"></canvas>
             </div>
 
-            {% if not category_expenses %}
+            <p id="insightsStatus" class="ai-status" aria-live="polite"></p>
+
+            <div id="insightsResult" class="insights-result" hidden></div>
+
+        </div>
+
+
+        <!-- Charts -->
+
+        <h2 class="section-title">Spending Analytics</h2>
+
+        <div class="chart-grid">
+
+            <div class="card">
+
+                <h3>Category-wise Spending</h3>
+
+                <div class="chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+
+                {% if not category_expenses %}
                 <p class="empty-message">
                     No expenses recorded this month.
                 </p>
-            {% endif %}
+                {% endif %}
 
-        </div>
-
-
-        <div class="card">
-
-            <h3>Monthly Spending Trend</h3>
-
-            <div class="chart-container">
-                <canvas id="monthlyTrendChart"></canvas>
             </div>
 
-            {% if not monthly_trend %}
+
+            <div class="card">
+
+                <h3>Monthly Spending Trend</h3>
+
+                <div class="chart-container">
+                    <canvas id="monthlyTrendChart"></canvas>
+                </div>
+
+                {% if not monthly_trend %}
                 <p class="empty-message">
                     No spending history available.
                 </p>
-            {% endif %}
+                {% endif %}
+
+            </div>
 
         </div>
 
-    </div>
 
+        <!-- Budget Progress -->
 
-    <!-- Budget Progress -->
+        <h2 class="section-title">Monthly Budget Progress</h2>
 
-    <h2 class="section-title">Monthly Budget Progress</h2>
+        <div class="card">
 
-    <div class="card">
-
-        {% for item in budget_progress %}
+            {% for item in budget_progress %}
 
             <div class="budget-item">
 
@@ -505,8 +498,7 @@
 
                 <div class="progress-bg">
 
-                    <div
-                        class="progress-fill"
+                    <div class="progress-fill"
                         style="width: {% if item.percentage > 100 %}100{% else %}{{ item.percentage }}{% endif %}%;">
                     </div>
 
@@ -519,37 +511,37 @@
 
             </div>
 
-        {% empty %}
+            {% empty %}
 
             <p class="empty-message">
                 No monthly budgets created yet.
             </p>
 
-        {% endfor %}
+            {% endfor %}
 
-    </div>
+        </div>
 
 
-    <!-- Recent Expenses -->
+        <!-- Recent Expenses -->
 
-    <h2 class="section-title">Recent Expenses</h2>
+        <h2 class="section-title">Recent Expenses</h2>
 
-    <div class="card table-wrapper">
+        <div class="card table-wrapper">
 
-        <table>
+            <table>
 
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Category</th>
-                    <th>Note</th>
-                    <th>Amount</th>
-                </tr>
-            </thead>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Note</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
 
-            <tbody>
+                <tbody>
 
-                {% for expense in recent_expenses %}
+                    {% for expense in recent_expenses %}
 
                     <tr>
                         <td>{{ expense.date|date:"d M Y" }}</td>
@@ -558,7 +550,7 @@
                         <td>₹{{ expense.amount|floatformat:2 }}</td>
                     </tr>
 
-                {% empty %}
+                    {% empty %}
 
                     <tr>
                         <td colspan="4">
@@ -566,429 +558,508 @@
                         </td>
                     </tr>
 
-                {% endfor %}
+                    {% endfor %}
 
-            </tbody>
+                </tbody>
 
-        </table>
+            </table>
 
+        </div>
     </div>
+{% endblock %}
 
-</div>
+{% block scripts %}
+    <script>
 
 
-<!-- JavaScript -->
+        // Category chart data from Django
 
-<script>
+        const categoryLabels = [
+            {% for item in category_expenses %}
+        "{{ item.category__name|escapejs }}",
+            {% endfor %}
+    ];
 
-    // Category chart data from Django
-
-    const categoryLabels = [
-        {% for item in category_expenses %}
-            "{{ item.category__name|escapejs }}",
+        const categoryAmounts = [
+            {% for item in category_expenses %}
+        {{ item.total }},
         {% endfor %}
     ];
 
-    const categoryAmounts = [
-        {% for item in category_expenses %}
-            {{ item.total }},
+        const categoryCanvas = document.getElementById("categoryChart");
+
+        if (categoryLabels.length > 0) {
+
+            new Chart(categoryCanvas, {
+
+                type: "doughnut",
+
+                data: {
+                    labels: categoryLabels,
+
+                    datasets: [{
+                        label: "Spending",
+                        data: categoryAmounts
+                    }]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+
+            });
+
+        }
+
+
+        // Monthly spending trend data from Django
+
+        const monthlyLabels = [
+            {% for item in monthly_trend %}
+        "{{ item.month|date:'M Y' }}",
+            {% endfor %}
+    ];
+
+        const monthlyAmounts = [
+            {% for item in monthly_trend %}
+        {{ item.total }},
         {% endfor %}
     ];
 
-    const categoryCanvas = document.getElementById("categoryChart");
+        const trendCanvas = document.getElementById("monthlyTrendChart");
 
-    if (categoryLabels.length > 0) {
+        if (monthlyLabels.length > 0) {
 
-        new Chart(categoryCanvas, {
+            new Chart(trendCanvas, {
 
-            type: "doughnut",
+                type: "line",
 
-            data: {
-                labels: categoryLabels,
+                data: {
+                    labels: monthlyLabels,
 
-                datasets: [{
-                    label: "Spending",
-                    data: categoryAmounts
-                }]
-            },
+                    datasets: [{
+                        label: "Monthly Spending (₹)",
+                        data: monthlyAmounts,
+                        tension: 0.3,
+                        fill: false
+                    }]
+                },
 
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
 
-        });
-
-    }
-
-
-    // Monthly spending trend data from Django
-
-    const monthlyLabels = [
-        {% for item in monthly_trend %}
-            "{{ item.month|date:'M Y' }}",
-        {% endfor %}
-    ];
-
-    const monthlyAmounts = [
-        {% for item in monthly_trend %}
-            {{ item.total }},
-        {% endfor %}
-    ];
-
-    const trendCanvas = document.getElementById("monthlyTrendChart");
-
-    if (monthlyLabels.length > 0) {
-
-        new Chart(trendCanvas, {
-
-            type: "line",
-
-            data: {
-                labels: monthlyLabels,
-
-                datasets: [{
-                    label: "Monthly Spending (₹)",
-                    data: monthlyAmounts,
-                    tension: 0.3,
-                    fill: false
-                }]
-            },
-
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-
-                scales: {
-                    y: {
-                        beginAtZero: true
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
                     }
                 }
-            }
-
-        });
-
-    }
-
-
-    // =================================
-    // AI EXPENSE ASSISTANT
-    // =================================
-
-    const descriptionInput = document.getElementById("expenseDescription");
-
-    const generateButton = document.getElementById("generateExpenseBtn");
-
-    const saveButton = document.getElementById("saveExpenseBtn");
-
-    const expenseDraft = document.getElementById("expenseDraft");
-
-    const aiStatus = document.getElementById("aiStatus");
-
-    const categorySelect = document.getElementById("draftCategory");
-
-    let availableCategories = [];
-
-
-    // Get Django CSRF token
-
-    function getCSRFToken() {
-
-        const cookie = document.cookie
-            .split("; ")
-            .find(row => row.startsWith("csrftoken="));
-
-        return cookie
-            ? decodeURIComponent(cookie.split("=")[1])
-            : "";
-
-    }
-
-
-    // Load categories belonging to the logged-in user
-
-    async function loadCategories() {
-
-        try {
-
-            const response = await fetch("/api/categories/", {
-                credentials: "same-origin"
-            });
-
-            if (!response.ok) {
-                throw new Error("Unable to load categories.");
-            }
-
-            availableCategories = await response.json();
-
-            categorySelect.innerHTML =
-                '<option value="">Select category</option>';
-
-            availableCategories.forEach(category => {
-
-                const option = document.createElement("option");
-
-                option.value = category.id;
-
-                option.textContent = category.name;
-
-                categorySelect.appendChild(option);
 
             });
-
-        } catch (error) {
-
-            aiStatus.textContent = error.message;
-
-            aiStatus.className = "ai-status ai-error";
-
-            throw error;
-
-        }
-
-    }
-
-
-    // Generate expense draft using Gemini
-
-    generateButton.addEventListener("click", async function () {
-
-        const description = descriptionInput.value.trim();
-
-        if (!description) {
-
-            aiStatus.textContent = "Please describe your expense.";
-
-            aiStatus.className = "ai-status ai-error";
-
-            return;
-
-        }
-
-        generateButton.disabled = true;
-
-        generateButton.textContent = "Generating...";
-
-        saveButton.disabled = false;
-
-        expenseDraft.hidden = true;
-
-        aiStatus.textContent =
-            "Gemini is understanding your expense...";
-
-        aiStatus.className = "ai-status";
-
-
-        try {
-
-            // Make sure categories are loaded before generating the draft
-
-            if (availableCategories.length === 0) {
-                await loadCategories();
-            }
-
-            const response = await fetch("/api/ai/expense-draft/", {
-
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCSRFToken()
-                },
-
-                credentials: "same-origin",
-
-                body: JSON.stringify({
-                    description: description
-                })
-
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-
-                throw new Error(
-                    data.error || "Unable to generate expense draft."
-                );
-
-            }
-
-            const expense = data.expense;
-
-
-            // Fill the draft fields
-
-            document.getElementById("draftAmount").value =
-                expense.amount;
-
-            document.getElementById("draftDate").value =
-                expense.date;
-
-            document.getElementById("draftPayment").value =
-                expense.payment_method;
-
-            document.getElementById("draftNote").value =
-                expense.note;
-
-
-            // Match Gemini's category to the user's actual category ID
-
-            categorySelect.value = "";
-
-            const matchingCategory = availableCategories.find(
-                category => category.name === expense.category
-            );
-
-            if (matchingCategory) {
-
-                categorySelect.value = matchingCategory.id;
-
-            }
-
-
-            // Display the draft
-
-            expenseDraft.hidden = false;
-
-            aiStatus.textContent =
-                "Expense draft generated successfully. Please review it.";
-
-            aiStatus.className = "ai-status ai-success";
-
-
-        } catch (error) {
-
-            aiStatus.textContent = error.message;
-
-            aiStatus.className = "ai-status ai-error";
-
-
-        } finally {
-
-            generateButton.disabled = false;
-
-            generateButton.textContent = "Generate Expense";
-
-        }
-
-    });
-
-
-    // Confirm and save expense
-
-    saveButton.addEventListener("click", async function () {
-
-        const expense = {
-
-            amount: document.getElementById("draftAmount").value,
-
-            category: categorySelect.value,
-
-            date: document.getElementById("draftDate").value,
-
-            payment_method: document.getElementById("draftPayment").value.trim(),
-
-            note: document.getElementById("draftNote").value.trim()
-
-        };
-
-
-        // Basic frontend validation
-
-        if (
-            !expense.amount ||
-            !Number.isFinite(Number(expense.amount)) ||
-            Number(expense.amount) <= 0 ||
-            !expense.category ||
-            !expense.date ||
-            !expense.payment_method
-        ) {
-
-            aiStatus.textContent =
-                "Please enter a valid amount, category, date and payment method.";
-
-            aiStatus.className = "ai-status ai-error";
-
-            return;
 
         }
 
 
-        saveButton.disabled = true;
+        // =================================
+        // AI EXPENSE ASSISTANT
+        // =================================
 
-        saveButton.textContent = "Saving...";
+        const descriptionInput = document.getElementById("expenseDescription");
 
+        const generateButton = document.getElementById("generateExpenseBtn");
 
-        try {
+        const saveButton = document.getElementById("saveExpenseBtn");
 
-            const response = await fetch("/api/expenses/", {
+        const expenseDraft = document.getElementById("expenseDraft");
 
-                method: "POST",
+        const aiStatus = document.getElementById("aiStatus");
 
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCSRFToken()
-                },
+        const categorySelect = document.getElementById("draftCategory");
 
-                credentials: "same-origin",
-
-                body: JSON.stringify(expense)
-
-            });
-
-            const data = await response.json();
+        let availableCategories = [];
 
 
-            if (!response.ok) {
+        // Get Django CSRF token
 
-                const errorMessage = Object.entries(data)
-                    .map(([field, errors]) => {
+        function getCSRFToken() {
 
-                        const message = Array.isArray(errors)
-                            ? errors.join(", ")
-                            : errors;
+            const cookie = document.cookie
+                .split("; ")
+                .find(row => row.startsWith("csrftoken="));
 
-                        return `${field}: ${message}`;
+            return cookie
+                ? decodeURIComponent(cookie.split("=")[1])
+                : "";
 
-                    })
-                    .join(" | ");
+        }
 
-                throw new Error(
-                    errorMessage || "Unable to save expense."
-                );
+
+        // Load categories belonging to the logged-in user
+
+        async function loadCategories() {
+
+            try {
+
+                const response = await fetch("/api/categories/", {
+                    credentials: "same-origin"
+                });
+
+                if (!response.ok) {
+                    throw new Error("Unable to load categories.");
+                }
+
+                availableCategories = await response.json();
+
+                categorySelect.innerHTML =
+                    '<option value="">Select category</option>';
+
+                availableCategories.forEach(category => {
+
+                    const option = document.createElement("option");
+
+                    option.value = category.id;
+
+                    option.textContent = category.name;
+
+                    categorySelect.appendChild(option);
+
+                });
+
+            } catch (error) {
+
+                aiStatus.textContent = error.message;
+
+                aiStatus.className = "ai-status ai-error";
+
+                throw error;
 
             }
 
-
-            aiStatus.textContent = "Expense saved successfully!";
-
-            aiStatus.className = "ai-status ai-success";
+        }
 
 
-            // Refresh dashboard to display the new expense
+        // Generate expense draft using Gemini
 
-            window.location.reload();
+        generateButton.addEventListener("click", async function () {
 
+            const description = descriptionInput.value.trim();
 
-        } catch (error) {
+            if (!description) {
 
-            aiStatus.textContent = error.message;
+                aiStatus.textContent = "Please describe your expense.";
 
-            aiStatus.className = "ai-status ai-error";
+                aiStatus.className = "ai-status ai-error";
 
+                return;
 
-        } finally {
+            }
+
+            generateButton.disabled = true;
+
+            generateButton.textContent = "Generating...";
 
             saveButton.disabled = false;
 
-            saveButton.textContent = "Confirm & Save Expense";
+            expenseDraft.hidden = true;
 
+            aiStatus.textContent =
+                "Gemini is understanding your expense...";
+
+            aiStatus.className = "ai-status";
+
+
+            try {
+
+                // Make sure categories are loaded before generating the draft
+
+                if (availableCategories.length === 0) {
+                    await loadCategories();
+                }
+
+                const response = await fetch("/api/ai/expense-draft/", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken()
+                    },
+
+                    credentials: "same-origin",
+
+                    body: JSON.stringify({
+                        description: description
+                    })
+
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.error || "Unable to generate expense draft."
+                    );
+
+                }
+
+                const expense = data.expense;
+
+
+                // Fill the draft fields
+
+                document.getElementById("draftAmount").value =
+                    expense.amount;
+
+                document.getElementById("draftDate").value =
+                    expense.date;
+
+                document.getElementById("draftPayment").value =
+                    expense.payment_method;
+
+                document.getElementById("draftNote").value =
+                    expense.note;
+
+
+                // Match Gemini's category to the user's actual category ID
+
+                categorySelect.value = "";
+
+                const matchingCategory = availableCategories.find(
+                    category => category.name === expense.category
+                );
+
+                if (matchingCategory) {
+
+                    categorySelect.value = matchingCategory.id;
+
+                }
+
+
+                // Display the draft
+
+                expenseDraft.hidden = false;
+
+                aiStatus.textContent =
+                    "Expense draft generated successfully. Please review it.";
+
+                aiStatus.className = "ai-status ai-success";
+
+
+            } catch (error) {
+
+                aiStatus.textContent = error.message;
+
+                aiStatus.className = "ai-status ai-error";
+
+
+            } finally {
+
+                generateButton.disabled = false;
+
+                generateButton.textContent = "Generate Expense";
+
+            }
+
+        });
+
+
+        // Confirm and save expense
+
+        saveButton.addEventListener("click", async function () {
+
+            const expense = {
+
+                amount: document.getElementById("draftAmount").value,
+
+                category: categorySelect.value,
+
+                date: document.getElementById("draftDate").value,
+
+                payment_method: document.getElementById("draftPayment").value.trim(),
+
+                note: document.getElementById("draftNote").value.trim()
+
+            };
+
+
+            // Basic frontend validation
+
+            if (
+                !expense.amount ||
+                !Number.isFinite(Number(expense.amount)) ||
+                Number(expense.amount) <= 0 ||
+                !expense.category ||
+                !expense.date ||
+                !expense.payment_method
+            ) {
+
+                aiStatus.textContent =
+                    "Please enter a valid amount, category, date and payment method.";
+
+                aiStatus.className = "ai-status ai-error";
+
+                return;
+
+            }
+
+
+            saveButton.disabled = true;
+
+            saveButton.textContent = "Saving...";
+
+
+            try {
+
+                const response = await fetch("/api/expenses/", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken()
+                    },
+
+                    credentials: "same-origin",
+
+                    body: JSON.stringify(expense)
+
+                });
+
+                const data = await response.json();
+
+
+                if (!response.ok) {
+
+                    const errorMessage = Object.entries(data)
+                        .map(([field, errors]) => {
+
+                            const message = Array.isArray(errors)
+                                ? errors.join(", ")
+                                : errors;
+
+                            return `${field}: ${message}`;
+
+                        })
+                        .join(" | ");
+
+                    throw new Error(
+                        errorMessage || "Unable to save expense."
+                    );
+
+                }
+
+
+                aiStatus.textContent = "Expense saved successfully!";
+
+                aiStatus.className = "ai-status ai-success";
+
+                // Clear the description input
+                descriptionInput.value = "";
+
+                // Hide the draft and clear its fields
+                expenseDraft.hidden = true;
+
+                document.getElementById("draftAmount").value = "";
+                document.getElementById("draftCategory").value = "";
+                document.getElementById("draftDate").value = "";
+                document.getElementById("draftPayment").value = "";
+                document.getElementById("draftNote").value = "";
+
+                // Refresh dashboard to display the new expense
+                window.location.reload();
+
+
+            } catch (error) {
+
+                aiStatus.textContent = error.message;
+
+                aiStatus.className = "ai-status ai-error";
+
+
+            } finally {
+
+                saveButton.disabled = false;
+
+                saveButton.textContent = "Confirm & Save Expense";
+
+            }
+
+        });
+
+        // =================================
+// AI MONTHLY FINANCIAL INSIGHTS
+// =================================
+
+const generateInsightsBtn = document.getElementById(
+    "generateInsightsBtn"
+);
+
+const insightsStatus = document.getElementById(
+    "insightsStatus"
+);
+
+const insightsResult = document.getElementById(
+    "insightsResult"
+);
+
+generateInsightsBtn.addEventListener("click", async function () {
+
+    generateInsightsBtn.disabled = true;
+    generateInsightsBtn.textContent = "Generating...";
+
+    insightsStatus.textContent = "Analysing your monthly expenses...";
+    insightsStatus.className = "ai-status";
+
+    insightsResult.hidden = true;
+
+    try {
+
+        const response = await fetch("/api/ai/monthly-insights/", {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken()
+            },
+
+            credentials: "same-origin",
+
+            body: JSON.stringify({})
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error || "Unable to generate monthly insights."
+            );
         }
 
-    });
+        insightsResult.textContent = data.insights;
+        insightsResult.hidden = false;
 
-</script>
+        insightsStatus.textContent =
+            "Your monthly insights are ready!";
 
-</body>
-</html>
+        insightsStatus.className = "ai-status ai-success";
+
+    } catch (error) {
+
+        insightsStatus.textContent = error.message;
+        insightsStatus.className = "ai-status ai-error";
+
+    } finally {
+
+        generateInsightsBtn.disabled = false;
+        generateInsightsBtn.textContent = "Generate AI Insights";
+
+    }
+
+});
+
+    
+    </script>
+{% endblock %}

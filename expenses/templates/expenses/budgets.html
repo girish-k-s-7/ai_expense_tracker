@@ -1,0 +1,722 @@
+ 
+{% extends "expenses/base.html" %}
+
+{% block title %}AI Expense Tracker | Budgets{% endblock %}
+
+{% block extra_head %}
+<style>
+    .page-container { max-width: 1200px; margin: auto; padding: 30px 20px; }
+    .page-heading { margin-bottom: 22px; }
+    .page-heading h1 { font-size: 26px; }
+    .page-heading p { color: #64748b; margin-top: 7px; }
+
+    .panel {
+        background: white;
+        padding: 22px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.04);
+        margin-bottom: 22px;
+    }
+
+    .panel h2 { font-size: 18px; margin-bottom: 18px; }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 15px;
+    }
+
+    .field label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 7px;
+    }
+
+    .field input, .field select {
+        width: 100%;
+        padding: 11px;
+        border: 1px solid #cbd5e1;
+        border-radius: 7px;
+        font-size: 14px;
+        background: white;
+        color: #1e293b;
+    }
+
+    .btn {
+        border: 0;
+        border-radius: 7px;
+        padding: 11px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #e2e8f0; color: #1e293b; }
+    .btn-danger { background: #fee2e2; color: #b91c1c; }
+    .btn-small { padding: 7px 10px; font-size: 12px; }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 17px;
+        flex-wrap: wrap;
+    }
+
+    .status {
+        margin-top: 12px;
+        font-size: 14px;
+        overflow-wrap: anywhere;
+    }
+
+    .status-error { color: #dc2626; }
+    .status-success { color: #15803d; }
+
+    .budget-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .budget-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 18px;
+    }
+
+    .budget-card-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .budget-card h3 { font-size: 16px; margin-bottom: 5px; }
+    .budget-month { color: #64748b; font-size: 13px; }
+    .budget-amount { font-size: 21px; font-weight: 700; margin: 16px 0 5px; }
+
+    .budget-detail {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        color: #64748b;
+        font-size: 13px;
+        margin: 7px 0 10px;
+    }
+
+    .progress-bg {
+        height: 9px;
+        background: #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: #2563eb;
+        border-radius: 10px;
+    }
+
+    .card-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: #64748b;
+        padding: 30px 10px;
+    }
+
+    @media (max-width: 750px) {
+        .form-grid, .budget-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 550px) {
+        .page-container { padding: 22px 12px; }
+        .panel { padding: 17px; }
+        .page-heading h1 { font-size: 22px; }
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="page-container">
+
+    <div class="page-heading">
+        <h1>Monthly Budgets</h1>
+        <p>Set spending limits and keep track of your monthly budget progress.</p>
+    </div>
+
+    <section class="panel" id="budgetFormPanel">
+        <h2 id="budgetFormTitle">Create Monthly Budget</h2>
+
+        <form id="budgetForm">
+            {% csrf_token %}
+
+            <div class="form-grid">
+
+                <div class="field">
+                    <label for="budgetCategory">Category</label>
+                    <select id="budgetCategory" required>
+                        <option value="">Select category</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="budgetMonth">Date</label>
+                    <input type="date" id="budgetMonth" required>
+                </div>
+
+                <div class="field">
+                    <label for="budgetAmount">Budget Amount (₹)</label>
+                    <input
+                        type="number"
+                        id="budgetAmount"
+                        min="0.01"
+                        step="0.01"
+                        placeholder="Example: 5000"
+                        required
+                    >
+                </div>
+
+            </div>
+
+            <div class="form-actions">
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                    id="saveBudgetBtn"
+                >
+                    Save Budget
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    id="cancelBudgetEditBtn"
+                    hidden
+                >
+                    Cancel
+                </button>
+            </div>
+
+            <p id="budgetFormStatus" class="status" aria-live="polite"></p>
+        </form>
+    </section>
+
+    <section class="panel">
+        <h2>Your Budgets</h2>
+
+        <p id="budgetListStatus" class="status" aria-live="polite"></p>
+
+        <div id="budgetList" class="budget-grid">
+            <p class="empty-state">Loading budgets...</p>
+        </div>
+    </section>
+
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+    const budgetsApiUrl = "/api/budgets/";
+    const categoriesApiUrl = "/api/categories/";
+
+    const budgetForm = document.getElementById("budgetForm");
+    const categorySelect = document.getElementById("budgetCategory");
+    const budgetList = document.getElementById("budgetList");
+
+    const budgetFormStatus = document.getElementById("budgetFormStatus");
+    const budgetListStatus = document.getElementById("budgetListStatus");
+
+    const saveButton = document.getElementById("saveBudgetBtn");
+    const cancelButton = document.getElementById("cancelBudgetEditBtn");
+
+    let editingBudgetId = null;
+    let categoriesById = {};
+
+
+    // Get CSRF token for POST, PUT and DELETE requests.
+    function getCSRFToken() {
+        const cookie = document.cookie
+            .split("; ")
+            .find(row => row.startsWith("csrftoken="));
+
+        return cookie ? decodeURIComponent(cookie.split("=")[1]) : "";
+    }
+
+
+    // Display success and error messages.
+    function showStatus(element, message, type = "") {
+        element.textContent = message;
+        element.className = "status";
+
+        if (type) {
+            element.classList.add(`status-${type}`);
+        }
+    }
+
+
+    // Format amount as Indian currency.
+    function formatAmount(amount) {
+        return Number(amount).toLocaleString("en-IN", {
+            style: "currency",
+            currency: "INR"
+        });
+    }
+
+
+    // Escape HTML before inserting dynamic values into the page.
+    function escapeHTML(value) {
+        return String(value ?? "").replace(/[&<>"']/g, character => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;"
+        })[character]);
+    }
+
+
+    // Format the month returned by the API.
+    function formatMonth(value) {
+        const date = new Date(`${value}T00:00:00`);
+
+        return date.toLocaleDateString("en-IN", {
+            month: "long",
+            year: "numeric"
+        });
+    }
+
+
+    // Convert the selected date into the first day of its month.
+    // Example: 2026-11-15 becomes 2026-11-01.
+    function getFormattedMonth(dateValue) {
+        if (!/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/.test(dateValue)) {
+            throw new Error("Please select a valid date.");
+        }
+
+        return `${dateValue.slice(0, 7)}-01`;
+    }
+
+
+    // Load categories belonging to the logged-in user.
+    async function loadCategories() {
+        const response = await fetch(categoriesApiUrl, {
+            credentials: "same-origin"
+        });
+
+        if (!response.ok) {
+            throw new Error("Unable to load categories.");
+        }
+
+        const categories = await response.json();
+
+        categorySelect.innerHTML =
+            '<option value="">Select category</option>';
+
+        categoriesById = {};
+
+        categories.forEach(category => {
+            categoriesById[category.id] = category.name;
+
+            const option = document.createElement("option");
+            option.value = category.id;
+            option.textContent = category.name;
+
+            categorySelect.appendChild(option);
+        });
+    }
+
+
+    // Load budgets from the backend.
+    async function loadBudgets() {
+        showStatus(budgetListStatus, "Loading budgets...");
+
+        budgetList.innerHTML =
+            '<p class="empty-state">Loading budgets...</p>';
+
+        try {
+            const response = await fetch(budgetsApiUrl, {
+                credentials: "same-origin"
+            });
+
+            if (!response.ok) {
+                throw new Error("Unable to load budgets.");
+            }
+
+            const budgets = await response.json();
+
+            renderBudgets(budgets);
+
+            showStatus(budgetListStatus, "");
+
+        } catch (error) {
+            budgetList.innerHTML =
+                '<p class="empty-state">Could not load budgets.</p>';
+
+            showStatus(budgetListStatus, error.message, "error");
+        }
+    }
+
+
+    // Display budgets as cards.
+    function renderBudgets(budgets) {
+        budgetList.innerHTML = "";
+
+        if (!budgets.length) {
+            budgetList.innerHTML = `
+                <p class="empty-state">
+                    No budgets created yet. Use the form above to create your first budget.
+                </p>
+            `;
+            return;
+        }
+
+        budgets.forEach(budget => {
+            const categoryName =
+                categoriesById[budget.category] || "Category";
+
+            const percentage = Number(budget.percentage_used || 0);
+
+            const progressWidth = Math.min(
+                Math.max(percentage, 0),
+                100
+            );
+
+            const card = document.createElement("article");
+
+            card.className = "budget-card";
+
+            card.innerHTML = `
+                <div class="budget-card-top">
+                    <div>
+                        <h3>${escapeHTML(categoryName)}</h3>
+                        <p class="budget-month">
+                            ${escapeHTML(formatMonth(budget.month))}
+                        </p>
+                    </div>
+
+                    <span class="budget-month">
+                        ${percentage.toFixed(1)}% used
+                    </span>
+                </div>
+
+                <p class="budget-amount">
+                    ${escapeHTML(formatAmount(budget.amount))}
+                </p>
+
+                <div class="budget-detail">
+                    <span>
+                        Spent: ${escapeHTML(formatAmount(budget.spent))}
+                    </span>
+
+                    <span>
+                        Remaining: ${escapeHTML(formatAmount(budget.remaining))}
+                    </span>
+                </div>
+
+                <div class="progress-bg">
+                    <div
+                        class="progress-fill"
+                        style="width: ${progressWidth}%"
+                    ></div>
+                </div>
+
+                <div class="card-actions">
+                    <button
+                        type="button"
+                        class="btn btn-secondary btn-small"
+                        data-action="edit"
+                        data-id="${budget.id}"
+                    >
+                        Edit
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn btn-danger btn-small"
+                        data-action="delete"
+                        data-id="${budget.id}"
+                    >
+                        Delete
+                    </button>
+                </div>
+            `;
+
+            budgetList.appendChild(card);
+        });
+    }
+
+
+    // Reset the form after saving or cancelling an edit.
+    function resetBudgetForm() {
+        budgetForm.reset();
+
+        editingBudgetId = null;
+
+        document.getElementById("budgetFormTitle").textContent =
+            "Create Monthly Budget";
+
+        saveButton.textContent = "Save Budget";
+
+        cancelButton.hidden = true;
+
+        showStatus(budgetFormStatus, "");
+    }
+
+
+    // Create or update a budget.
+    budgetForm.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const dateValue =
+            document.getElementById("budgetMonth").value;
+
+        const amountValue =
+            document.getElementById("budgetAmount").value;
+
+        if (
+            !categorySelect.value ||
+            !dateValue ||
+            !amountValue ||
+            Number(amountValue) <= 0
+        ) {
+            showStatus(
+                budgetFormStatus,
+                "Please select a date and category, and enter a valid budget amount.",
+                "error"
+            );
+            return;
+        }
+
+        let formattedMonth;
+
+        try {
+            formattedMonth = getFormattedMonth(dateValue);
+        } catch (error) {
+            showStatus(budgetFormStatus, error.message, "error");
+            return;
+        }
+
+        // Prepare the data sent to Django REST Framework.
+        const budget = {
+            category: categorySelect.value,
+            month: formattedMonth,
+            amount: amountValue
+        };
+
+        // Remember whether this is a create or update operation.
+        const wasEditing = editingBudgetId !== null;
+
+        const url = wasEditing
+            ? `${budgetsApiUrl}${editingBudgetId}/`
+            : budgetsApiUrl;
+
+        const method = wasEditing ? "PUT" : "POST";
+
+        saveButton.disabled = true;
+        saveButton.textContent = wasEditing ? "Updating..." : "Saving...";
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken()
+                },
+
+                credentials: "same-origin",
+
+                body: JSON.stringify(budget)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                const message = Object.entries(data)
+                    .map(([field, errors]) => {
+                        const errorMessage = Array.isArray(errors)
+                            ? errors.join(", ")
+                            : errors;
+
+                        return `${field}: ${errorMessage}`;
+                    })
+                    .join(" | ");
+
+                throw new Error(message || "Unable to save budget.");
+            }
+
+            resetBudgetForm();
+
+            showStatus(
+                budgetFormStatus,
+                wasEditing
+                    ? "Budget updated successfully."
+                    : "Budget saved successfully.",
+                "success"
+            );
+
+            await loadBudgets();
+
+        } catch (error) {
+            showStatus(
+                budgetFormStatus,
+                error.message,
+                "error"
+            );
+
+        } finally {
+            saveButton.disabled = false;
+
+            saveButton.textContent =
+                editingBudgetId !== null
+                    ? "Update Budget"
+                    : "Save Budget";
+        }
+    });
+
+
+    // Retrieve a budget and populate the form for editing.
+    async function editBudget(budgetId) {
+        try {
+            const response = await fetch(
+                `${budgetsApiUrl}${budgetId}/`,
+                { credentials: "same-origin" }
+            );
+
+            if (!response.ok) {
+                throw new Error("Unable to retrieve this budget.");
+            }
+
+            const budget = await response.json();
+
+            editingBudgetId = budget.id;
+
+            categorySelect.value = budget.category;
+
+            // API date is YYYY-MM-DD, matching input type="date".
+            document.getElementById("budgetMonth").value =
+                budget.month;
+
+            document.getElementById("budgetAmount").value =
+                budget.amount;
+
+            document.getElementById("budgetFormTitle").textContent =
+                "Edit Monthly Budget";
+
+            saveButton.textContent = "Update Budget";
+
+            cancelButton.hidden = false;
+
+            showStatus(
+                budgetFormStatus,
+                "Update the fields and save your changes."
+            );
+
+            document.getElementById("budgetFormPanel")
+                .scrollIntoView({ behavior: "smooth" });
+
+        } catch (error) {
+            showStatus(
+                budgetListStatus,
+                error.message,
+                "error"
+            );
+        }
+    }
+
+
+    // Delete a budget.
+    async function deleteBudget(budgetId) {
+        if (!window.confirm("Are you sure you want to delete this budget?")) {
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `${budgetsApiUrl}${budgetId}/`,
+                {
+                    method: "DELETE",
+
+                    headers: {
+                        "X-CSRFToken": getCSRFToken()
+                    },
+
+                    credentials: "same-origin"
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error("Unable to delete this budget.");
+            }
+
+            showStatus(
+                budgetListStatus,
+                "Budget deleted successfully.",
+                "success"
+            );
+
+            await loadBudgets();
+
+        } catch (error) {
+            showStatus(
+                budgetListStatus,
+                error.message,
+                "error"
+            );
+        }
+    }
+
+
+    // Handle Edit and Delete button clicks.
+    budgetList.addEventListener("click", event => {
+        const button = event.target.closest("button[data-action]");
+
+        if (!button) {
+            return;
+        }
+
+        const budgetId = button.dataset.id;
+
+        if (button.dataset.action === "edit") {
+            editBudget(budgetId);
+        }
+
+        if (button.dataset.action === "delete") {
+            deleteBudget(budgetId);
+        }
+    });
+
+
+    // Cancel the current edit operation.
+    cancelButton.addEventListener("click", resetBudgetForm);
+
+
+    // Initialize the page.
+    async function initializeBudgetsPage() {
+        try {
+            await loadCategories();
+            await loadBudgets();
+
+        } catch (error) {
+            showStatus(
+                budgetListStatus,
+                error.message,
+                "error"
+            );
+        }
+    }
+
+    initializeBudgetsPage();
+
+</script>
+{% endblock %}

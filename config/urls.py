@@ -21,6 +21,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from expenses.views import dashboard_view
+from expenses.views import dashboard_view, expenses_page, budgets_page
 
 
 urlpatterns = [
@@ -45,4 +46,6 @@ urlpatterns = [
     ),
 
     path("api/", include("expenses.api_urls")),
+    path("expenses/", expenses_page, name="expenses"),
+    path("budgets/", budgets_page, name="budgets"),
 ]

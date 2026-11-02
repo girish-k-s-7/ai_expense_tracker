@@ -6,6 +6,7 @@ from .views import (
     CategoryViewSet,
     BudgetViewSet,
     generate_expense_draft,
+    generate_monthly_insights,
 )
 
 router = DefaultRouter()
@@ -20,6 +21,11 @@ urlpatterns = [
         generate_expense_draft,
         name="generate-expense-draft"
     ),
+    path(
+    "ai/monthly-insights/",
+    generate_monthly_insights,
+    name="generate-monthly-insights"
+),
 ]
 
 urlpatterns += router.urls

@@ -1,0 +1,67 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Expense Tracker{% endblock %}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f7fb; color: #1e293b; min-height: 100vh; display: flex; flex-direction: column; }
+        .site-header { background: #fff; border-bottom: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+        .header-inner { max-width: 1200px; margin: auto; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+        .brand { color: #1e293b; text-decoration: none; font-size: 21px; font-weight: 700; white-space: nowrap; }
+        .header-right { display: flex; align-items: center; gap: 25px; }
+        .main-nav { display: flex; align-items: center; gap: 20px; }
+        .main-nav a { color: #475569; text-decoration: none; font-size: 14px; font-weight: 600; }
+        .main-nav a:hover, .main-nav a.active { color: #2563eb; }
+        .user-area { display: flex; align-items: center; gap: 12px; }
+        .username { color: #64748b; font-size: 13px; }
+        .logout-btn { background: #1e293b; color: white; border: none; padding: 9px 15px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+        .logout-btn:hover { background: #334155; }
+        main { flex: 1; width: 100%; }
+        .site-footer { margin-top: 35px; background: #fff; border-top: 1px solid #e2e8f0; }
+        .footer-inner { max-width: 1200px; margin: auto; padding: 22px 20px; display: flex; justify-content: space-between; align-items: center; gap: 15px; color: #64748b; font-size: 13px; }
+        .footer-brand { color: #1e293b; font-weight: 700; }
+        @media (max-width: 700px) {
+            .header-inner, .header-right { align-items: flex-start; flex-direction: column; }
+            .header-inner { gap: 14px; }
+            .header-right { width: 100%; gap: 14px; }
+            .main-nav { flex-wrap: wrap; gap: 14px; }
+            .user-area { width: 100%; justify-content: space-between; }
+            .footer-inner { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="{% url 'dashboard' %}">₹ AI Expense Tracker</a>
+            <div class="header-right">
+                <nav class="main-nav" aria-label="Main navigation">
+                    <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+                    <a href="{% url 'expenses' %}" class="{% if request.resolver_match.url_name == 'expenses' %}active{% endif %}">Expenses</a>
+                    <a href="{% url 'budgets' %}" class="{% if request.resolver_match.url_name == 'budgets' %}active{% endif %}">Budgets</a>
+                </nav>
+                <div class="user-area">
+                    <span class="username">Welcome, {{ request.user.username }}</span>
+                    <form method="POST" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button class="logout-btn" type="submit">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+    <main>{% block content %}{% endblock %}</main>
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <span class="footer-brand">₹ AI Expense Tracker</span>
+            <span>Personal finance management made easier.</span>
+            <span>© 2026 AI Expense Tracker</span>
+        </div>
+    </footer>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
