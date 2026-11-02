@@ -299,6 +299,6 @@ Deployment and further improvements can be added in future iterations.
 
 ## Author
 
-Developed as a Python full-stack and AI integration project.
+Girish K S
 
 **Technologies:** Python | Django | Django REST Framework | SQLite | JavaScript | Google Gemini AI
